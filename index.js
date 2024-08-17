@@ -10,13 +10,24 @@ import chalk from 'chalk'
 import os from 'os'
 import { z } from 'zod'
 // import { LocalStorage } from 'node-localstorage';
-// import path from 'path';
+import path from 'path'
+import fs from 'fs'
 
 const execAsync = promisify(exec)
 config()
 
 function getOsType() {
   return os.type()
+}
+
+function checkForFileOrFolder(name, isFile = false) {
+  const fullPath = path.join(process.cwd(), name)
+  try {
+    const stats = fs.statSync(fullPath)
+    return isFile ? stats.isFile() : stats.isDirectory()
+  } catch (error) {
+    return false
+  }
 }
 
 const zSchema = z.object({
@@ -81,8 +92,33 @@ const execCommand = async command => {
   const currentDir = process.cwd()
   console.log(chalk.cyan(`\n> About to run this command: ${command}`))
 
-  if (command.startsWith('rm') || command.includes('delete') || command.includes('remove')) {
-    const itemName = command.split(' ').pop()
+  const commandLower = command.toLowerCase()
+
+  if (commandLower.includes('mkdir') || commandLower.includes('touch')) {
+    const words = command.split(' ')
+    const name = words[words.length - 1]
+    if (checkForFileOrFolder(name)) {
+      console.log(chalk.red(`A file or folder named "${name}" already exists.`))
+      return
+    }
+  }
+
+  if (commandLower.includes('cd ')) {
+    const words = command.split(' ')
+    const dir = words[words.length - 1]
+    if (!checkForFileOrFolder(dir)) {
+      console.log(chalk.red(`The folder "${dir}" does not exist.`))
+      return
+    }
+  }
+
+  if (
+    commandLower.includes('rm') ||
+    commandLower.includes('delete') ||
+    commandLower.includes('remove')
+  ) {
+    const words = command.split(' ')
+    const itemName = words[words.length - 1]
 
     const { confirmName } = await enquirer.prompt({
       type: 'input',
