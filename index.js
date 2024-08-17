@@ -13,8 +13,65 @@ import { z } from 'zod'
 import path from 'path'
 import fs from 'fs'
 
+const CONFIG_FILE = path.join(os.homedir(), '.adam-cli.json')
+
 const execAsync = promisify(exec)
 config()
+
+async function configAdam() {
+  const { model } = await enquirer.prompt({
+    type: 'select',
+    name: 'model',
+    message: 'What model would you like to configure?',
+    choices: ['OpenAI'],
+  })
+
+  if (model === 'OpenAI') {
+    const { apiKey } = await enquirer.prompt({
+      type: 'password',
+      name: 'apiKey',
+      message: 'Please enter your OpenAI API KEY:',
+    })
+
+    const config = { openaiApiKey: apiKey }
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2))
+    console.log(chalk.green('Key configured successfully.'))
+  }
+}
+
+function openConfigFile() {
+  if (!fs.existsSync(CONFIG_FILE)) {
+    console.log(chalk.yellow('Config does not exist. Run "adam config" to create it.'))
+    return
+  }
+
+  const openEditor =
+    process.platform === 'win32' ? 'start' : process.platform === 'darwin' ? 'open' : 'xdg-open'
+
+  exec(`${openEditor} ${CONFIG_FILE}`, error => {
+    if (error) {
+      console.log(chalk.red(`Failed to open config file: ${error.message}`))
+    } else {
+      console.log(chalk.green('Config file opened'))
+    }
+  })
+}
+
+function getConfig() {
+  try {
+    return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'))
+  } catch (error) {
+    return {}
+  }
+}
+
+function initOpenAI() {
+  const config = getConfig()
+  if (config.openaiApiKey) {
+    return new OpenAI({ apiKey: config.openaiApiKey })
+  }
+  return null
+}
 
 function getOsType() {
   return os.type()
@@ -34,11 +91,7 @@ const zSchema = z.object({
   command: z.string().nullable(),
 })
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
-
-const prompt = async userPrompt => {
+const prompt = async (userPrompt, openai) => {
   const loader = ora('Creating command...').start()
   const osType = getOsType()
 
@@ -200,10 +253,27 @@ const execCommand = async command => {
 const runAdam = async () => {
   const args = process.argv.slice(2)
 
-  let task
-  if (args[0] === '-p' && args[1]) {
-    task = args.slice(1).join(' ')
-  } else {
+  if (args[0] === 'config' && args.length === 1) {
+    await configAdam()
+    return
+  }
+
+  if (args[0] === 'open-config') {
+    openConfigFile()
+    return
+  }
+
+  const openai = initOpenAI()
+  if (!openai) {
+    console.log(
+      chalk.red('API key not configured. Please run "adam config" to set up your API key.'),
+    )
+    return
+  }
+
+  let task = args.join(' ')
+
+  if (!task) {
     const response = await enquirer.prompt({
       type: 'input',
       name: 'task',
@@ -212,7 +282,7 @@ const runAdam = async () => {
     task = response.task
   }
 
-  let commandObj = await prompt(task)
+  let commandObj = await prompt(task, openai)
   if (!commandObj || !commandObj.command) {
     console.log(chalk.red('No valid command created. Try again?'))
     return
