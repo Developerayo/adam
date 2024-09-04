@@ -3,16 +3,23 @@
 import { config } from 'dotenv'
 import chalk from 'chalk'
 import enquirer from 'enquirer'
-import { configAdam, openConfigFile, getConfig } from './src/config.js'
-import { initOpenAI, prompt } from './src/openai.js'
-import { useVoice, checkSox, alternativeChoice } from './src/voice.js'
-import { execCommand } from './src/execCommand.js'
+import { configAdam, openConfigFile, getConfig } from './src/utils/config.js'
+import { initOpenAI, prompt } from './src/services/openai.js'
+import { useVoice, checkSox, alternativeChoice } from './src/services/voice.js'
+import { execCommand } from './src/helpers/execCommand.js'
+import { analyzeCwd } from './src/helpers/cwdStructure.js'
 
 config()
 
 const runAdam = async () => {
   const args = process.argv.slice(2)
+  const cwd = process.cwd()
 
+  const cwdStructure = await analyzeCwd(cwd)
+  console.log(chalk.cyan('::::::::::::::::CWD Details::::::::::::::::'))
+  console.log(JSON.stringify(cwdStructure, null, 2))
+  console.log(chalk.cyan('::::::::::::::::End::::::::::::::::\n'))
+  
   if (args[0] === 'config') {
     await configAdam()
     return
@@ -24,8 +31,7 @@ const runAdam = async () => {
   }
 
   if (args[0] === 'show-config') {
-    const config = getConfig()
-    // console.log(chalk.cyan('show'))
+    const config = await getConfig()
     console.log(JSON.stringify(config, null, 2))
     return
   }
@@ -41,13 +47,17 @@ const runAdam = async () => {
   const config = getConfig()
   let task = args.join(' ')
 
+  // const cwdStructure = analyzeCwd(cwd)
+
   if (args[0] === '-voice' || config.defaultPromptMethod === 'voice') {
+    const config = await getConfig()
     if (!config.assemblyaiApiKey) {
       console.log(
         chalk.red('AssemblyAI API key not configured. Please run "adam config" to set it up.'),
       )
       return
     }
+    process.env.ASSEMBLYAI_API_KEY = config.assemblyaiApiKey
     const soxAvail = await checkSox()
     if (!soxAvail) {
       const continueWithText = await alternativeChoice()
@@ -55,9 +65,8 @@ const runAdam = async () => {
         return
       }
     } else {
-      process.env.ASSEMBLYAI_API_KEY = config.assemblyaiApiKey
       try {
-        task = await useVoice()
+        task = await useVoice(cwd)
         if (task === null) {
           console.log(chalk.yellow('Voice input stopped.'))
           return
@@ -82,9 +91,9 @@ const runAdam = async () => {
     task = response.task
   }
 
-  let commandObj = await prompt(task, openai)
+  let commandObj = await prompt(task, openai, cwd)
   if (!commandObj || !commandObj.command) {
-    console.log(chalk.red('No valid command created. Try again?'))
+    console.log(chalk.red(commandObj.message || 'No valid command created. Try again?'))
     return
   }
 
@@ -101,7 +110,7 @@ const runAdam = async () => {
 
   if (userConfirmation) {
     try {
-      await execCommand(commandObj.command)
+      await execCommand(commandObj.command, cwdStructure)
     } catch (error) {
       console.error(chalk.red(`Problem don dey o: ${error.message || error}`)),
         console.log(
