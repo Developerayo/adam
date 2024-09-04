@@ -3,24 +3,22 @@ import { AssemblyAI } from 'assemblyai'
 import recorder from 'node-record-lpcm16'
 import enquirer from 'enquirer'
 import chalk from 'chalk'
+import { promisify } from 'util'
 
-export function checkSox() {
-  return new Promise(resolve => {
-    exec('sox --version', error => {
-      if (error) {
-        console.log(chalk.red("sox is not installed. It's required for Adam voice commands."))
-        console.log(chalk.yellow('Installation instructions:'))
-        console.log(chalk.yellow('- On macOS: brew install sox'))
-        console.log(chalk.yellow('- On Ubuntu or Debian: sudo apt-get install sox'))
-        console.log(
-          chalk.yellow('- On Windows: Download from https://sourceforge.net/projects/sox/'),
-        )
-        resolve(false)
-      } else {
-        resolve(true)
-      }
-    })
-  })
+const execAsync = promisify(exec)
+
+export async function checkSox() {
+  try {
+    await execAsync('sox --version')
+    return true
+  } catch (error) {
+    console.log(chalk.red("sox is not installed. It's required for Adam voice commands."))
+    console.log(chalk.yellow('Installation instructions:'))
+    console.log(chalk.yellow('- On macOS: brew install sox'))
+    console.log(chalk.yellow('- On Ubuntu or Debian: sudo apt-get install sox'))
+    console.log(chalk.yellow('- On Windows: Download from https://sourceforge.net/projects/sox/'))
+    return false
+  }
 }
 
 export async function alternativeChoice() {
@@ -29,8 +27,6 @@ export async function alternativeChoice() {
     name: 'choice',
     message: 'What would you like to do?',
     choices: ['Continue with text input', 'Exit and install sox'],
-    initial: true,
-    format: value => value ? 'Yes' : 'No'
   })
 
   return choice === 'Continue with text input'
@@ -75,16 +71,17 @@ export async function useVoice() {
       })
     })
 
-    realTime.on('transcript', transcript => {
-      if (transcript.message_type === 'PartialTranscript') {
-        process.stdout.write('\r' + chalk.yellow('Listening: ') + transcript.text)
-      } else if (transcript.message_type === 'FinalTranscript') {
+    realTime.on('transcript', async transcript => {
+      if (transcript.message_type === 'FinalTranscript') {
         console.log('\n' + chalk.green('Recognized: ') + transcript.text)
         if (recording) {
           recording.stop()
         }
         realTime.close()
-        resolve(transcript.text)
+
+        const result = await prompt(transcript.text, openai, cwd)
+
+        resolve(result)
       }
     })
 

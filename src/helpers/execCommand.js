@@ -2,7 +2,7 @@ import { spawn } from 'child_process'
 import os from 'os'
 import chalk from 'chalk'
 import enquirer from 'enquirer'
-import { checkForFileOrFolder } from './utils/utils.js'
+import { checkForFileOrFolder } from '../utils/utils.js'
 
 export async function execCommand(command) {
   const currentDir = process.cwd()
