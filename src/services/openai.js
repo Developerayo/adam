@@ -63,6 +63,6 @@ Constraints:
   } catch (error) {
     loader.fail('Failed to create command')
     console.error(chalk.red('error:'), error instanceof Error ? error.message : String(error))
-    return { command: null, message: 'Failed to create command' }
+    return { command: null, message: 'Failed to create command: ' + error.message }
   }
 }

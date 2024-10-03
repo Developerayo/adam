@@ -105,7 +105,7 @@ const runAdam = async () => {
     name: 'userConfirmation',
     message: 'Ready to run this command?',
     initial: true,
-     format: value => value ? 'Yes' : 'No'
+    format: value => (value ? 'Yes' : 'No'),
   })
 
   if (userConfirmation) {
@@ -130,4 +130,9 @@ runAdam().catch(unexpectedError => {
     unexpectedError instanceof Error ? unexpectedError.message : String(unexpectedError),
   )
   process.exit(1)
+})
+
+process.on('SIGINT', () => {
+  console.log(chalk.red('\nDie by fire'))
+  process.exit(0)
 })
