@@ -72,12 +72,54 @@ export async function execCommand(command) {
     }
   }
 
+  if (commandLower.includes('git') && commandLower.includes('commit')) {
+    const gitCommand = command.split('&&').map(cmd => cmd.trim())
+
+    for (const cmd of gitCommand) {
+      if (cmd.toLowerCase().startsWith('git commit')) {
+        const commitMsgMatch = cmd.match(/-m\s*"(.+)"/)
+        if (commitMsgMatch) {
+          const commitMsg = commitMsgMatch[1]
+
+          await runCommand('git add .', currentDir)
+
+          await new Promise((resolve, reject) => {
+            const childProcess = spawn('git', ['commit', '-m', commitMsg], {
+              cwd: currentDir,
+              stdio: 'inherit',
+            })
+
+            childProcess.on('close', exitCode => {
+              if (exitCode === 0) {
+                console.log(chalk.green('\n✔ Commit executed successfully!'))
+                resolve()
+              } else {
+                reject(new Error(`Commit failed: ${exitCode}`))
+              }
+            })
+
+            childProcess.on('error', errorDetails => {
+              reject(errorDetails)
+            })
+          })
+        }
+      } else {
+        await runCommand(cmd, currentDir)
+      }
+    }
+    return
+  }
+
+  await runCommand(command, currentDir)
+}
+
+async function runCommand(command, cwd) {
   return new Promise((resolve, reject) => {
     let childProcess
 
     if (os.platform() === 'win32') {
       childProcess = spawn('cmd.exe', ['/c', command], {
-        cwd: currentDir,
+        cwd,
         stdio: 'inherit',
       })
     } else {
@@ -93,7 +135,7 @@ export async function execCommand(command) {
               `
       const cleanedUp = shellCheck.replace(/'/g, "'\\''")
       childProcess = spawn('/bin/sh', ['-c', `bash -c 'zsh -c "${cleanedUp}"'`], {
-        cwd: currentDir,
+        cwd,
         stdio: 'inherit',
       })
     }

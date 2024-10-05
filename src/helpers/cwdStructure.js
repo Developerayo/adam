@@ -48,30 +48,32 @@ export async function getGitInfo(cwd) {
       execAsync('git rev-parse --abbrev-ref HEAD', { cwd }),
       execAsync('git config --get remote.origin.url', { cwd }),
       execAsync('git status --porcelain', { cwd }),
-      execAsync('git diff --cached --name-only', { cwd }),
+      execAsync('git diff HEAD', { cwd }),
     ])
 
-    const stagedChanges = diff.stdout.split('\n').filter(line => line.trim() !== '')
     const changes = status.stdout.split('\n').filter(line => line.trim() !== '')
 
     const detailedChanges = await Promise.all(
       changes.map(async change => {
         const [status, file] = change.trim().split(' ')
-        if (status === 'M') {
-          const fileDiff = await execAsync(`git diff -- ${file}`, { cwd })
-          return { status, file, diff: fileDiff.stdout }
+        let fileDiff = ''
+        if (status !== '??') {
+          fileDiff = await execAsync(`git diff HEAD -- "${file}"`, { cwd })
+            .then(result => result.stdout)
+            .catch(() => '')
         }
-        return { status, file }
+        return { status, file, diff: fileDiff }
       }),
     )
 
     return {
       branch: branch.stdout.trim(),
       remoteUrl: remoteUrl.stdout.trim(),
-      stagedChanges,
       changes: detailedChanges,
+      fullDiff: diff.stdout,
     }
   } catch (error) {
+    console.error('Error getting git info:', error)
     return null
   }
 }

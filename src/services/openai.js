@@ -41,19 +41,24 @@ Guidelines:
 
 For git commits, create a message following these rules:
 Guidelines:
-- Use the format: <type>: <concise description>
-- Keep it under 40 characters
-- Be extremely specific on the diff/change
-- Focus on the main/key changes
-- Use imperative mood (e.g., "fix" not "fixed")
+- Analyze the changes in the Project Analysis thoroughly
+- Be extremely specific about the main code changes
+- Use the format: <type>: <specific description>
+- Aim for 50 characters, but prioritize specificity over brevity
+- Use imperative mood (e.g., "implement" not "implemented")
 - No period at the end
+- Enclose the entire message in double quotes
 
 Types: feat, fix, ref, docs, style, test, chore
 
 Examples:
-"feat: add user authentication flow"
-"fix: resolve race condition in worker"
-"ref: simplify error handling"
+git add . && git commit -m "feat: implement JWT-based user authentication in auth.js"
+git add . && git commit -m "fix: resolve race condition in worker.js processQueue function"
+git add . && git commit -m "ref: simplify error handling in api/errors.js"
+git add . && git commit -m "docs: update API usage instructions for new endpoints"
+git add . && git commit -m "style: apply consistent indentation in src directory"
+git add . && git commit -m "test: add unit tests for user registration process"
+git add . && git commit -m "chore: update babel and webpack to latest versions"
 
 Constraints:
 - Do not generate personal opinions or advice.
