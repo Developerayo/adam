@@ -42,15 +42,34 @@ async function doesFileExist(cwd, file) {
     .catch(() => false)
 }
 
-async function getGitInfo(cwd) {
+export async function getGitInfo(cwd) {
   try {
-    const [branch, remoteUrl] = await Promise.all([
+    const [branch, remoteUrl, status, diff] = await Promise.all([
       execAsync('git rev-parse --abbrev-ref HEAD', { cwd }),
       execAsync('git config --get remote.origin.url', { cwd }),
+      execAsync('git status --porcelain', { cwd }),
+      execAsync('git diff --cached --name-only', { cwd }),
     ])
+
+    const stagedChanges = diff.stdout.split('\n').filter(line => line.trim() !== '')
+    const changes = status.stdout.split('\n').filter(line => line.trim() !== '')
+
+    const detailedChanges = await Promise.all(
+      changes.map(async change => {
+        const [status, file] = change.trim().split(' ')
+        if (status === 'M') {
+          const fileDiff = await execAsync(`git diff -- ${file}`, { cwd })
+          return { status, file, diff: fileDiff.stdout }
+        }
+        return { status, file }
+      }),
+    )
+
     return {
       branch: branch.stdout.trim(),
       remoteUrl: remoteUrl.stdout.trim(),
+      stagedChanges,
+      changes: detailedChanges,
     }
   } catch (error) {
     return null

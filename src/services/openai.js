@@ -39,6 +39,22 @@ Guidelines:
 5. Return null if the request is invalid or impossible.
 6. Leverage the project analysis for context-aware commands.
 
+For git commits, create a message following these rules:
+Guidelines:
+- Use the format: <type>: <concise description>
+- Keep it under 40 characters
+- Be extremely specific on the diff/change
+- Focus on the main/key changes
+- Use imperative mood (e.g., "fix" not "fixed")
+- No period at the end
+
+Types: feat, fix, ref, docs, style, test, chore
+
+Examples:
+"feat: add user authentication flow"
+"fix: resolve race condition in worker"
+"ref: simplify error handling"
+
 Constraints:
 - Do not generate personal opinions or advice.
 - Focus on accuracy, efficiency, and direct executability
