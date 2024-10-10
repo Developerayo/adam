@@ -21,14 +21,15 @@ export async function prompt(userPrompt, openai, cwd) {
   const cwdStructure = await analyzeCwd(cwd)
 
   const gitInfo = cwdStructure.gitInfo
-  let gitStatus = 'Not a git repo or git is not installed)'
+  let gitStatus = 'Not a git repo or git is not installed'
   if (gitInfo && gitInfo.isGitRepo) {
     gitStatus = `Git repository ${gitInfo.hasCommits ? 'with' : 'without'} commits.`
     if (gitInfo.branch) gitStatus += ` Branch: ${gitInfo.branch}.`
     gitStatus += ` Remote URL: ${gitInfo.remoteUrl}.`
     if (gitInfo.changes && gitInfo.changes.length > 0) {
       gitStatus +=
-        '\nChanges:\n' + gitInfo.changes.map(change => `${change.status} ${change.file}`).join('\n')
+        `\nChanges (${gitInfo.changes.length}):\n` +
+        gitInfo.changes.map(change => `${change.status} ${change.file}`).join('\n')
     } else {
       gitStatus += '\nNo changes'
     }

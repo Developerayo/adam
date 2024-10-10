@@ -47,22 +47,31 @@ export async function getGitInfo(cwd) {
     // Check for git [true/false]
     await execAsync('git rev-parse --is-inside-work-tree', { cwd })
 
-    // Check for commits
-    const hasCommits = await execAsync('git rev-parse --verify HEAD', { cwd })
-      .then(() => true)
-      .catch(() => false)
-
     let branch = ''
     let remoteUrl = ''
     let status = ''
     let diff = ''
 
+    // Check for commits
+    const hasCommits = await execAsync('git rev-parse --verify HEAD', { cwd })
+      .then(() => true)
+      .catch(() => false)
+
     if (hasCommits) {
-      ;[branch, status, diff] = await Promise.all([
-        execAsync('git rev-parse --abbrev-ref HEAD', { cwd }),
-        execAsync('git status --porcelain', { cwd }),
-        execAsync('git diff HEAD', { cwd }),
-      ])
+      try {
+        ;[branch, diff] = await Promise.all([
+          execAsync('git rev-parse --abbrev-ref HEAD', { cwd }),
+          execAsync('git diff HEAD', { cwd }),
+        ])
+      } catch (error) {
+        console.error('Error getting git branch or diff:', error)
+      }
+    }
+
+    try {
+      status = await execAsync('git status --porcelain', { cwd })
+    } catch (error) {
+      console.error('Error getting git status:', error)
     }
 
     try {
@@ -72,28 +81,22 @@ export async function getGitInfo(cwd) {
       remoteUrl = 'No remote URL has been configured.'
     }
 
-    const changes = status.stdout.split('\n').filter(line => line.trim() !== '')
+    const changes =
+      status && status.stdout ? status.stdout.split('\n').filter(line => line.trim() !== '') : []
 
-    const detailedChanges = await Promise.all(
-      changes.map(async change => {
-        const [status, file] = change.trim().split(' ')
-        let fileDiff = ''
-        if (status !== '??') {
-          fileDiff = await execAsync(`git diff HEAD -- "${file}"`, { cwd })
-            .then(result => result.stdout)
-            .catch(() => '')
-        }
-        return { status, file, diff: fileDiff }
-      }),
-    )
+    const detailedChanges = changes.map(change => {
+      const [status, ...fileParts] = change.trim().split(' ')
+      const file = fileParts.join(' ')
+      return { status, file }
+    })
 
     return {
       isGitRepo: true,
       hasCommits,
-      branch: branch.stdout ? branch.stdout.trim() : '',
+      branch: branch && branch.stdout ? branch.stdout.trim() : '',
       remoteUrl,
       changes: detailedChanges,
-      fullDiff: diff.stdout,
+      fullDiff: diff && diff.stdout ? diff.stdout : '',
     }
   } catch (error) {
     console.error('Error getting git info:', error)
