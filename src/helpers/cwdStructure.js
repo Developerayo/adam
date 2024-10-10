@@ -44,12 +44,33 @@ async function doesFileExist(cwd, file) {
 
 export async function getGitInfo(cwd) {
   try {
-    const [branch, remoteUrl, status, diff] = await Promise.all([
-      execAsync('git rev-parse --abbrev-ref HEAD', { cwd }),
-      execAsync('git config --get remote.origin.url', { cwd }),
-      execAsync('git status --porcelain', { cwd }),
-      execAsync('git diff HEAD', { cwd }),
-    ])
+    // Check for git [true/false]
+    await execAsync('git rev-parse --is-inside-work-tree', { cwd })
+
+    // Check for commits
+    const hasCommits = await execAsync('git rev-parse --verify HEAD', { cwd })
+      .then(() => true)
+      .catch(() => false)
+
+    let branch = ''
+    let remoteUrl = ''
+    let status = ''
+    let diff = ''
+
+    if (hasCommits) {
+      ;[branch, status, diff] = await Promise.all([
+        execAsync('git rev-parse --abbrev-ref HEAD', { cwd }),
+        execAsync('git status --porcelain', { cwd }),
+        execAsync('git diff HEAD', { cwd }),
+      ])
+    }
+
+    try {
+      const getRemoteUrl = await execAsync('git config --get remote.origin.url', { cwd })
+      remoteUrl = getRemoteUrl.stdout.trim()
+    } catch (error) {
+      remoteUrl = 'No remote URL has been configured.'
+    }
 
     const changes = status.stdout.split('\n').filter(line => line.trim() !== '')
 
@@ -67,14 +88,20 @@ export async function getGitInfo(cwd) {
     )
 
     return {
-      branch: branch.stdout.trim(),
-      remoteUrl: remoteUrl.stdout.trim(),
+      isGitRepo: true,
+      hasCommits,
+      branch: branch.stdout ? branch.stdout.trim() : '',
+      remoteUrl,
       changes: detailedChanges,
       fullDiff: diff.stdout,
     }
   } catch (error) {
     console.error('Error getting git info:', error)
-    return null
+    return {
+      isGitRepo: false,
+      hasCommits: false,
+      message: 'Not a git repository or git is not installed',
+    }
   }
 }
 

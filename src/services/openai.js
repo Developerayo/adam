@@ -20,6 +20,20 @@ export async function prompt(userPrompt, openai, cwd) {
   const osType = getOsType()
   const cwdStructure = await analyzeCwd(cwd)
 
+  const gitInfo = cwdStructure.gitInfo
+  let gitStatus = 'Not a git repo or git is not installed)'
+  if (gitInfo && gitInfo.isGitRepo) {
+    gitStatus = `Git repository ${gitInfo.hasCommits ? 'with' : 'without'} commits.`
+    if (gitInfo.branch) gitStatus += ` Branch: ${gitInfo.branch}.`
+    gitStatus += ` Remote URL: ${gitInfo.remoteUrl}.`
+    if (gitInfo.changes && gitInfo.changes.length > 0) {
+      gitStatus +=
+        '\nChanges:\n' + gitInfo.changes.map(change => `${change.status} ${change.file}`).join('\n')
+    } else {
+      gitStatus += '\nNo changes'
+    }
+  }
+
   try {
     const completion = await openai.beta.chat.completions.parse({
       model: 'gpt-4o-2024-08-06',
@@ -30,6 +44,9 @@ export async function prompt(userPrompt, openai, cwd) {
 
 Operating System: ${osType}
 Project Analysis: ${JSON.stringify(cwdStructure, null, 2)}
+
+Git Status:
+${gitStatus}
 
 Guidelines:
 1. Produce only the command to be executed.
