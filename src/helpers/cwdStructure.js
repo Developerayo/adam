@@ -99,11 +99,10 @@ export async function getGitInfo(cwd) {
       fullDiff: diff && diff.stdout ? diff.stdout : '',
     }
   } catch (error) {
-    console.error('Error getting git info:', error)
     return {
       isGitRepo: false,
       hasCommits: false,
-      message: 'Not a git repository or git is not installed',
+      message: 'Not a git repository',
     }
   }
 }
