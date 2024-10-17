@@ -54,7 +54,7 @@ const runAdam = async () => {
     task = args.join(' ')
   }
 
-  console.log(chalk.cyan(`M Name ${modelInUse}`)) // TODO rm later
+  console.log(chalk.cyan(`Model In Use: ${modelInUse}`)) // TODO rm later
 
   // const cwdStructure = analyzeCwd(cwd)
 
