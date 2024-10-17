@@ -32,9 +32,9 @@ export async function configAdam() {
     choices: [
       'Configure OpenAI',
       'Configure Google Gemini',
+      'Select default AI model',
       'Configure Voice Command via AssemblyAI [BETA FEATURE]',
       'Select default way of interacting with Adam',
-      'Select default AI model',
     ],
   })
 
