@@ -7,6 +7,8 @@ import { configAdam, openConfigFile, getConfig } from './src/utils/config.js'
 import { initOpenAI, prompt as promptOpenAI } from './src/services/openai.js'
 import { initGemini, promptGemini } from './src/services/gemini.js'
 import { useVoice, checkSox, alternativeChoice } from './src/services/voice.js'
+import { initOpenAI, prompt } from './src/services/openai.js'
+import { useVoice } from './src/services/voice.js'
 import { execCommand } from './src/helpers/execCommand.js'
 import { analyzeCwd } from './src/helpers/cwdStructure.js'
 
@@ -20,7 +22,7 @@ const runAdam = async () => {
   console.log(chalk.cyan('::::::::::::::::CWD Details::::::::::::::::'))
   console.log(JSON.stringify(cwdStructure, null, 2))
   console.log(chalk.cyan('::::::::::::::::End::::::::::::::::\n'))
-  
+
   if (args[0] === 'config') {
     await configAdam()
     return
@@ -59,36 +61,7 @@ const runAdam = async () => {
   // const cwdStructure = analyzeCwd(cwd)
 
   if (args[0] === '-voice' || config.defaultPromptMethod === 'voice') {
-    const config = await getConfig()
-    if (!config.assemblyaiApiKey) {
-      console.log(
-        chalk.red('AssemblyAI API key not configured. Please run "adam config" to set it up.'),
-      )
-      return
-    }
-    process.env.ASSEMBLYAI_API_KEY = config.assemblyaiApiKey
-    const soxAvail = await checkSox()
-    if (!soxAvail) {
-      const continueWithText = await alternativeChoice()
-      if (!continueWithText) {
-        return
-      }
-    } else {
-      try {
-        task = await useVoice(cwd)
-        if (task === null) {
-          console.log(chalk.yellow('Voice input stopped.'))
-          return
-        }
-        if (!task) {
-          console.log(chalk.red('No incoming speech. Please try again.'))
-          return
-        }
-      } catch (error) {
-        console.error(chalk.red(`Recognition failed: ${error.message}`))
-        return
-      }
-    }
+    task = await useVoice()
   }
 
   if (!task) {

@@ -44,7 +44,6 @@ export async function prompt(userPrompt, openai, cwd) {
           content: `You are an expert CLI Assistant. Generate the exact executable command based on the user request.
 
 Operating System: ${osType}
-Project Analysis: ${JSON.stringify(cwdStructure, null, 2)}
 
 Git Status:
 ${gitStatus}
