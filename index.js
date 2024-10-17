@@ -4,7 +4,8 @@ import { config } from 'dotenv'
 import chalk from 'chalk'
 import enquirer from 'enquirer'
 import { configAdam, openConfigFile, getConfig } from './src/utils/config.js'
-import { initOpenAI, prompt } from './src/services/openai.js'
+import { initOpenAI, prompt as promptOpenAI } from './src/services/openai.js'
+import { initGemini, promptGemini } from './src/services/gemini.js'
 import { useVoice, checkSox, alternativeChoice } from './src/services/voice.js'
 import { execCommand } from './src/helpers/execCommand.js'
 import { analyzeCwd } from './src/helpers/cwdStructure.js'
@@ -44,8 +45,16 @@ const runAdam = async () => {
     return
   }
 
-  const config = getConfig()
+  const config = await getConfig()
   let task = args.join(' ')
+  let modelInUse = config.defaultModel
+
+  if (args[0] === 'openai' || args[0] === 'gemini') {
+    modelInUse = args.shift()
+    task = args.join(' ')
+  }
+
+  console.log(chalk.cyan(`M Name ${modelInUse}`)) // TODO rm later
 
   // const cwdStructure = analyzeCwd(cwd)
 
@@ -91,14 +100,43 @@ const runAdam = async () => {
     task = response.task
   }
 
-  let commandObj = await prompt(task, openai, cwd)
+  let commandObj
+  if (modelInUse === 'gemini') {
+    if (!config.geminiApiKey) {
+      console.log(
+        chalk.red('Google Gemini API key not configured. Please run "adam config" to set it up.'),
+      )
+      return
+    }
+    const gemini = initGemini(config.geminiApiKey)
+    if (!gemini) {
+      return
+    }
+    commandObj = await promptGemini(task, gemini, cwd)
+  } else {
+    if (!config.openaiApiKey) {
+      console.log(
+        chalk.red('OpenAI API key not configured. Please run "adam config" to set it up.'),
+      )
+      return
+    }
+    const openai = initOpenAI(config.openaiApiKey)
+    if (!openai) {
+      return
+    }
+    commandObj = await promptOpenAI(task, openai, cwd)
+  }
+
   if (!commandObj || !commandObj.command) {
     console.log(chalk.red(commandObj.message || 'No valid command created. Try again?'))
     return
   }
 
   console.log(chalk.cyan('Created command:'))
-  console.log(commandObj.command)
+  const modelName = modelInUse === 'gemini' ? 'Gemini' : 'OpenAI'
+  const modelColor = modelInUse === 'gemini' ? chalk.white.bgBlue : chalk.white.bgRed
+
+  console.log(modelColor.bold(`[${modelName}]`) + chalk.white(` ${commandObj.command}`))
 
   const { userConfirmation } = await enquirer.prompt({
     type: 'confirm',

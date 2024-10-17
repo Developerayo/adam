@@ -1,21 +1,28 @@
-import { OpenAI } from 'openai'
+import fetch, { Headers } from 'node-fetch'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 import ora from 'ora'
 import chalk from 'chalk'
 import { z } from 'zod'
-import { zodResponseFormat } from 'openai/helpers/zod'
 import { analyzeCwd } from '../helpers/cwdStructure.js'
 import { getOsType } from '../utils/utils.js'
+
+globalThis.fetch = fetch
+globalThis.Headers = Headers
 
 const CommandStepSchema = z.object({
   command: z.string().nullable(),
   message: z.string().optional(),
 })
 
-export function initOpenAI(apiKey) {
-  return new OpenAI({ apiKey })
+export function initGemini(apiKey) {
+  if (!apiKey) {
+    console.log(chalk.red('Gemini API key is missing. Please configure it using "adam config".'))
+    return null
+  }
+  return new GoogleGenerativeAI(apiKey)
 }
 
-export async function prompt(userPrompt, openai, cwd) {
+export async function promptGemini(userPrompt, gemini, cwd) {
   const loader = ora('Creating command...').start()
   const osType = getOsType()
   const cwdStructure = await analyzeCwd(cwd)
@@ -36,12 +43,9 @@ export async function prompt(userPrompt, openai, cwd) {
   }
 
   try {
-    const completion = await openai.beta.chat.completions.parse({
-      model: 'gpt-4o-2024-08-06',
-      messages: [
-        {
-          role: 'system',
-          content: `You are an expert CLI Assistant. Generate the exact executable command based on the user request.
+    const model = gemini.getGenerativeModel({ model: 'gemini-pro' })
+
+    const prompt = `You are an expert CLI Assistant. Generate the exact executable command based on the user request.
 
 Operating System: ${osType}
 Project Analysis: ${JSON.stringify(cwdStructure, null, 2)}
@@ -60,6 +64,7 @@ Guidelines:
 For git commits, create a message following these rules:
 Guidelines:
 - Analyze the changes in the Project Analysis thoroughly
+- Attempt to fulfill the user's request as long as you understand it and it's not nonsensical.
 - Be extremely specific about the main code changes
 - Use the format: <type>: <specific description>
 - Aim for 50 characters, but prioritize specificity over brevity
@@ -83,25 +88,42 @@ Constraints:
 - Focus on accuracy, efficiency, and direct executability
 - Do not include any commentary or explanation in the responses.
 - Focus solely on producing the command script based on the user's prompt.
-`,
-        },
-        { role: 'user', content: userPrompt },
-      ],
-      response_format: zodResponseFormat(CommandStepSchema, 'command_response'),
-    })
+
+User Request: ${userPrompt}
+
+Respond with a JSON object in the following format:
+{
+  "command": "The generated command or null if invalid",
+  "message": "Optional message explaining why the command is null"
+}
+`
+
+    const result = await model.generateContent(prompt)
+    const generatedText = result.response.text()
+
+    let response
+    try {
+      response = JSON.parse(generatedText)
+    } catch (error) {
+      console.error(chalk.red('Error parsing Gemini response:'), error)
+      return { command: null, message: 'Failed to parse Gemini response', model: 'Gemini' }
+    }
 
     loader.succeed('Command created')
 
-    const result = completion.choices[0].message.parsed
-
-    if (result.command && result.command.trim() === '') {
-      result.command = null
+    if (response.command && response.command.trim() === '') {
+      response.command = null
     }
 
-    return { ...result, model: 'OpenAI' }
+    // Msg always has to be a string
+    if (response.message === null || response.message === undefined) {
+      response.message = ''
+    }
+
+    return { ...CommandStepSchema.parse(response), model: 'Gemini' }
   } catch (error) {
     loader.fail('Failed to create command')
     console.error(chalk.red('error:'), error instanceof Error ? error.message : String(error))
-    return { command: null, message: 'Failed to create command: ' + error.message }
+    return { command: null, message: 'Failed to create command: ' + error.message, model: 'Gemini' }
   }
 }
