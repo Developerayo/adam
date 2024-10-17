@@ -7,8 +7,6 @@ import { configAdam, openConfigFile, getConfig } from './src/utils/config.js'
 import { initOpenAI, prompt as promptOpenAI } from './src/services/openai.js'
 import { initGemini, promptGemini } from './src/services/gemini.js'
 import { useVoice, checkSox, alternativeChoice } from './src/services/voice.js'
-import { initOpenAI, prompt } from './src/services/openai.js'
-import { useVoice } from './src/services/voice.js'
 import { execCommand } from './src/helpers/execCommand.js'
 import { analyzeCwd } from './src/helpers/cwdStructure.js'
 
