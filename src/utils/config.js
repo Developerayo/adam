@@ -31,6 +31,8 @@ export async function configAdam() {
     message: 'What would you like to configure?',
     choices: [
       'Configure OpenAI',
+      'Configure Google Gemini',
+      'Select default AI model',
       'Configure Voice Command via AssemblyAI [BETA FEATURE]',
       'Select default way of interacting with Adam',
     ],
@@ -38,13 +40,32 @@ export async function configAdam() {
 
   switch (configChoice) {
     case 'Configure OpenAI':
-      const { apiKey } = await enquirer.prompt({
+      const { openaiApiKey } = await enquirer.prompt({
         type: 'password',
-        name: 'apiKey',
+        name: 'openaiApiKey',
         message: 'Please enter your OpenAI API KEY:',
       })
-      config.openaiApiKey = apiKey
+      config.openaiApiKey = openaiApiKey
       console.log(chalk.green('OpenAI API Key saved.'))
+      break
+    case 'Configure Google Gemini':
+      const { geminiApiKey } = await enquirer.prompt({
+        type: 'password',
+        name: 'geminiApiKey',
+        message: 'Please enter your Google Gemini API KEY:',
+      })
+      config.geminiApiKey = geminiApiKey
+      console.log(chalk.green('Google Gemini API Key saved.'))
+      break
+    case 'Select default AI model':
+      const { defaultModel } = await enquirer.prompt({
+        type: 'select',
+        name: 'defaultModel',
+        message: 'Choose default AI model:',
+        choices: ['openai', 'gemini'],
+      })
+      config.defaultModel = defaultModel
+      console.log(chalk.green(`Default AI model configured to ${defaultModel}`))
       break
     case 'Configure Voice Command via AssemblyAI [BETA FEATURE]':
       const { assemblyaiApiKey } = await enquirer.prompt({
