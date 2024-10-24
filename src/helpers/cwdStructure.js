@@ -42,7 +42,7 @@ async function doesFileExist(cwd, file) {
     .catch(() => false)
 }
 
-export async function getGitInfo(cwd) {
+export async function getGitInfo(cwd, isFullInfoNeeded = false) {
   try {
     // Check for git [true/false]
     await execAsync('git rev-parse --is-inside-work-tree', { cwd })
@@ -59,10 +59,13 @@ export async function getGitInfo(cwd) {
 
     if (hasCommits) {
       try {
-        ;[branch, diff] = await Promise.all([
-          execAsync('git rev-parse --abbrev-ref HEAD', { cwd }),
-          execAsync('git diff HEAD', { cwd }),
-        ])
+        const branchDetails = await execAsync('git rev-parse --abbrev-ref HEAD', { cwd })
+        branch = branchDetails.stdout.trim()
+
+        if (isFullInfoNeeded) {
+          const diffdetails = await execAsync('git diff HEAD', { cwd })
+          diff = diffdetails.stdout
+        }
       } catch (error) {
         console.error('Error getting git branch or diff:', error)
       }
@@ -90,14 +93,21 @@ export async function getGitInfo(cwd) {
       return { status, file }
     })
 
-    return {
-      isGitRepo: true,
-      hasCommits,
-      branch: branch && branch.stdout ? branch.stdout.trim() : '',
-      remoteUrl,
-      changes: detailedChanges,
-      fullDiff: diff && diff.stdout ? diff.stdout : '',
-    }
+    return isFullInfoNeeded
+      ? {
+          isGitRepo: true,
+          hasCommits,
+          branch,
+          remoteUrl,
+          changes: detailedChanges,
+          fullDiff: diff,
+        }
+      : {
+          isGitRepo: true,
+          hasCommits,
+          branch,
+          remoteUrl,
+        }
   } catch (error) {
     return {
       isGitRepo: false,
@@ -271,9 +281,9 @@ async function scanProjectDir(cwd, type, files) {
   return {}
 }
 
-export async function analyzeCwd(cwd) {
+export async function analyzeCwd(cwd, isCommitRelated = false) {
   const files = await fs.readdir(cwd)
-  const gitInfo = await getGitInfo(cwd)
+  const gitInfo = await getGitInfo(cwd, isCommitRelated)
 
   let type = 'unknown'
   for (const [projectType, typeFiles] of Object.entries(projectDirMap)) {

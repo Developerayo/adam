@@ -18,7 +18,8 @@ export function initOpenAI(apiKey) {
 export async function prompt(userPrompt, openai, cwd) {
   const loader = ora('Creating command...').start()
   const osType = getOsType()
-  const cwdStructure = await analyzeCwd(cwd)
+  const isCommitRelated = userPrompt.toLowerCase().includes('commit')
+  const cwdStructure = await analyzeCwd(cwd, isCommitRelated)
 
   const gitInfo = cwdStructure.gitInfo
   let gitStatus = 'Not a git repo or git is not installed'
@@ -30,6 +31,10 @@ export async function prompt(userPrompt, openai, cwd) {
       gitStatus +=
         `\nChanges (${gitInfo.changes.length}):\n` +
         gitInfo.changes.map(change => `${change.status} ${change.file}`).join('\n')
+
+      if (isCommitRelated && gitInfo.fullDiff) {
+        gitStatus += `\n\nFull diff:\n${gitInfo.fullDiff}`
+      }
     } else {
       gitStatus += '\nNo changes'
     }
