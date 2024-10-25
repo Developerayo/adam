@@ -6,7 +6,7 @@ import enquirer from 'enquirer'
 import { configAdam, openConfigFile, getConfig } from './src/utils/config.js'
 import { initOpenAI, prompt as promptOpenAI } from './src/services/openai.js'
 import { initGemini, promptGemini } from './src/services/gemini.js'
-import { useVoice, checkSox, alternativeChoice } from './src/services/voice.js'
+import { useVoice } from './src/services/voice.js' // rm checkSox, alternativeChoice for now, if you need it add it back, if not rm @emekaorji
 import { execCommand } from './src/helpers/execCommand.js'
 import { analyzeCwd } from './src/helpers/cwdStructure.js'
 
@@ -16,9 +16,24 @@ const runAdam = async () => {
   const args = process.argv.slice(2)
   const cwd = process.cwd()
 
-  const cwdStructure = await analyzeCwd(cwd)
+  const isCommitRelated = args.join(' ').toLowerCase().includes('commit')
+
+  const cwdStructure = await analyzeCwd(cwd, isCommitRelated)
+
+  const jsonStruct = {
+    ...cwdStructure,
+    gitInfo: isCommitRelated
+      ? cwdStructure.gitInfo
+      : {
+          isGitRepo: cwdStructure.gitInfo.isGitRepo,
+          hasCommits: cwdStructure.gitInfo.hasCommits,
+          branch: cwdStructure.gitInfo.branch,
+          remoteUrl: cwdStructure.gitInfo.remoteUrl,
+        },
+  }
+
   console.log(chalk.cyan('::::::::::::::::CWD Details::::::::::::::::'))
-  console.log(JSON.stringify(cwdStructure, null, 2))
+  console.log(JSON.stringify(jsonStruct, null, 2))
   console.log(chalk.cyan('::::::::::::::::End::::::::::::::::\n'))
 
   if (args[0] === 'config') {
