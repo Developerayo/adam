@@ -2,24 +2,35 @@
 
 import { config } from 'dotenv'
 import chalk from 'chalk'
+import ora from 'ora'
 import enquirer from 'enquirer'
 import { configAdam, openConfigFile, getConfig } from './src/utils/config.js'
 import { initOpenAI, prompt as promptOpenAI } from './src/services/openai.js'
 import { initGemini, promptGemini } from './src/services/gemini.js'
-import { useVoice } from './src/services/voice.js' // rm checkSox, alternativeChoice for now, if you need it add it back, if not rm @emekaorji
+import { useVoice } from './src/services/voice.js'
 import { execCommand } from './src/helpers/execCommand.js'
-import { analyzeCwd } from './src/helpers/cwdStructure.js'
+import { analyzeCwd, fetchDependencyCount } from './src/helpers/cwdStructure.js'
 
 config()
+process.noDeprecation = true
 
 const runAdam = async () => {
   const args = process.argv.slice(2)
   const cwd = process.cwd()
 
-  const isCommitRelated = args.join(' ').toLowerCase().includes('commit')
+  const isCommitRelated =
+    args.join(' ').toLowerCase().includes('commit') || args.join(' ').toLowerCase().includes('push')
 
+  const spinner = ora({
+    color: 'cyan',
+    spinner: 'dots',
+  }).start()
+
+  spinner.text = 'Scanning through workspace directory'
   const cwdStructure = await analyzeCwd(cwd, isCommitRelated)
+  spinner.succeed(chalk.dim('Scaned through workspace directory'))
 
+  spinner.start('Studying git info')
   const jsonStruct = {
     ...cwdStructure,
     gitInfo: isCommitRelated
@@ -31,10 +42,36 @@ const runAdam = async () => {
           remoteUrl: cwdStructure.gitInfo.remoteUrl,
         },
   }
+  spinner.succeed(chalk.dim('Studied git info'))
 
-  console.log(chalk.cyan('::::::::::::::::CWD Details::::::::::::::::'))
-  console.log(JSON.stringify(jsonStruct, null, 2))
-  console.log(chalk.cyan('::::::::::::::::End::::::::::::::::\n'))
+  if (jsonStruct.gitInfo.isGitRepo) {
+    spinner.start('Checking git status')
+    if (jsonStruct.gitInfo.changes?.length > 0) {
+      spinner.warn(chalk.dim('Working tree not clean'))
+      spinner.warn(chalk.dim(`Found ${jsonStruct.gitInfo.changes.length} uncommitted changes`))
+    } else {
+      spinner.succeed(chalk.dim('Working tree clean'))
+    }
+  }
+
+  const depCount = fetchDependencyCount(jsonStruct)
+  if (depCount !== null) {
+    spinner.start('Scanning dependencies')
+    if (Object.keys(depCount.byType).length > 1) {
+      const depString = Object.entries(depCount.byType)
+        .map(([type, count]) => `${count} ${type}`)
+        .join(', ')
+      spinner.succeed(chalk.dim(`Found ${depCount.total} total dependencies (${depString})`))
+    } else {
+      spinner.succeed(chalk.dim(`Found ${depCount.total} dependencies`))
+    }
+  }
+
+  // investigate response: "DEBUG=true adam [some-comand]"
+  if (process.env.DEBUG) {
+    console.log(chalk.cyan('\nresponse:'))
+    console.log(JSON.stringify(jsonStruct, null, 2))
+  }
 
   if (args[0] === 'config') {
     await configAdam()
@@ -69,7 +106,7 @@ const runAdam = async () => {
     task = args.join(' ')
   }
 
-  console.log(chalk.cyan(`Model In Use: ${modelInUse}`)) // TODO rm later
+  console.log(chalk.cyan('\n⚡️ Model:'), chalk.bold(modelInUse.toUpperCase()))
 
   // const cwdStructure = analyzeCwd(cwd)
 
@@ -118,7 +155,6 @@ const runAdam = async () => {
     return
   }
 
-  console.log(chalk.cyan('Created command:'))
   const modelName = modelInUse === 'gemini' ? 'Gemini' : 'OpenAI'
   const modelColor = modelInUse === 'gemini' ? chalk.white.bgBlue : chalk.white.bgRed
 
@@ -127,9 +163,9 @@ const runAdam = async () => {
   const { userConfirmation } = await enquirer.prompt({
     type: 'confirm',
     name: 'userConfirmation',
-    message: 'Ready to run this command?',
-    initial: true,
-    format: value => (value ? 'Yes' : 'No'),
+    message: chalk.yellow('▶️  Ready to run this command?'),
+    initial: false,
+    format: value => chalk.bold(value ? 'Yes' : 'No'),
   })
 
   if (userConfirmation) {
