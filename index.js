@@ -56,9 +56,33 @@ async function newUser() {
   }
 }
 
+const configs = async args => {
+  if (args[0] === 'config') {
+    await configAdam()
+    return true
+  }
+
+  if (args[0] === 'open-config') {
+    openConfigFile()
+    return true
+  }
+
+  if (args[0] === 'show-config') {
+    const config = await getConfig()
+    console.log(JSON.stringify(config, null, 2))
+    return true
+  }
+
+  return false
+}
+
 const runAdam = async () => {
   const args = process.argv.slice(2)
   await newUser()
+
+  if (await configs(args)) {
+    return
+  }
 
   if (args[0] === '--help' || args[0] === '-h') {
     showHelp()
@@ -125,22 +149,6 @@ const runAdam = async () => {
   if (process.env.DEBUG) {
     console.log(chalk.cyan('\nresponse:'))
     console.log(JSON.stringify(jsonStruct, null, 2))
-  }
-
-  if (args[0] === 'config') {
-    await configAdam()
-    return
-  }
-
-  if (args[0] === 'open-config') {
-    openConfigFile()
-    return
-  }
-
-  if (args[0] === 'show-config') {
-    const config = await getConfig()
-    console.log(JSON.stringify(config, null, 2))
-    return
   }
 
   const openai = initOpenAI()

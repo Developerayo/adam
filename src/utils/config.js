@@ -108,7 +108,7 @@ export async function openConfigFile() {
   }
 
   const openEditor =
-    process.platform === 'win32' ? 'start' : process.platform === 'darwin' ? 'open' : 'xdg-open'
+    process.platform === 'win32' ? 'start' : process.platform === 'darwin' ? 'code' : 'xdg-open'
 
   try {
     await exec(`${openEditor} ${CONFIG_FILE}`)
