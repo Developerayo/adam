@@ -5,7 +5,7 @@ import chalk from 'chalk'
 import ora from 'ora'
 import enquirer from 'enquirer'
 import { ascii } from './src/utils/ascii.js'
-import { configAdam, openConfigFile, getConfig } from './src/utils/config.js'
+import { configAdam, openConfigFile, getConfig, writeConfig } from './src/utils/config.js'
 import { initOpenAI, prompt as promptOpenAI } from './src/services/openai.js'
 import { initGemini, promptGemini } from './src/services/gemini.js'
 import { useVoice } from './src/services/voice.js'
@@ -41,8 +41,24 @@ Examples:
   process.exit(0)
 }
 
+async function newUser() {
+  const config = await getConfig()
+  if (!config.userName) {
+    const { userName } = await enquirer.prompt({
+      type: 'input',
+      name: 'userName',
+      message: 'Before we proceed, what should I call you?',
+    })
+    config.userName = userName
+    await writeConfig(config)
+    console.log(chalk.green('Name saved!'))
+    process.exit(0)
+  }
+}
+
 const runAdam = async () => {
   const args = process.argv.slice(2)
+  await newUser()
 
   if (args[0] === '--help' || args[0] === '-h') {
     showHelp()
@@ -153,10 +169,13 @@ const runAdam = async () => {
   }
 
   if (!task) {
+    const greeting = config.userName
+      ? `Hi ${config.userName}, I'm Adam, What would you like me to do?`
+      : "Hi, I'm Adam, What would you like me to do?"
     const response = await enquirer.prompt({
       type: 'input',
       name: 'task',
-      message: "Hi, I'm Adam, What would you like me to do?",
+      message: greeting,
     })
     task = response.task
   }
