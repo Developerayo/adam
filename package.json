@@ -8,6 +8,7 @@
     "adam": "./index.js"
   },
   "scripts": {
+    "postinstall": "node --input-type=module -e \"import { ascii } from './src/utils/ascii.js'; console.log(ascii)\"",
     "test": "node index.test.js",
     "start": "node index.js"
   },
