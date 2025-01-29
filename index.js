@@ -4,6 +4,7 @@ import { config } from 'dotenv'
 import chalk from 'chalk'
 import ora from 'ora'
 import enquirer from 'enquirer'
+import { ascii } from './src/utils/ascii.js'
 import { configAdam, openConfigFile, getConfig } from './src/utils/config.js'
 import { initOpenAI, prompt as promptOpenAI } from './src/services/openai.js'
 import { initGemini, promptGemini } from './src/services/gemini.js'
@@ -14,8 +15,45 @@ import { analyzeCwd, fetchDependencyCount } from './src/helpers/cwdStructure.js'
 config()
 process.noDeprecation = true
 
+const showHelp = () => {
+  console.log(ascii)
+  console.log(`
+Usage: adam [command] [options]
+
+Commands:
+  config        Configure API keys and defaults
+  open-config   Open config file in your default editor
+  show-config   Show current configuration in your shell
+  openai        Force using OpenAI for next command
+  gemini        Force using Gemini for next command
+  -voice        Use voice input for next command
+
+Options:
+  --help, -h    Show this help message
+  --version, -v Show current version
+
+Examples:
+  $ adam "create a new react component"
+  $ adam openai commit all current changes
+  $ adam gemini install pymongo
+  $ adam -voice
+  `)
+  process.exit(0)
+}
+
 const runAdam = async () => {
   const args = process.argv.slice(2)
+
+  if (args[0] === '--help' || args[0] === '-h') {
+    showHelp()
+  }
+
+  if (args[0] === '--version' || args[0] === '-v') {
+    console.log(ascii)
+    console.log('\nAdam CLI v0.1.0')
+    process.exit(0)
+  }
+
   const cwd = process.cwd()
 
   const isCommitRelated =
@@ -164,7 +202,7 @@ const runAdam = async () => {
     type: 'confirm',
     name: 'userConfirmation',
     message: chalk.yellow('▶️  Ready to run this command?'),
-    initial: false,
+    initial: true,
     format: value => chalk.bold(value ? 'Yes' : 'No'),
   })
 
