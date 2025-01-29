@@ -135,12 +135,22 @@ async function scanProjectDir(cwd, type, files) {
         }
       }
       break
-    case 'rust':
-      const cargoTo = await fs.readFile(path.join(cwd, 'Cargo.toml'), 'utf8')
+    case 'rust': {
+      const cargoToml = await fs.readFile(path.join(cwd, 'Cargo.toml'), 'utf8')
+      const rsDepSelection = cargoToml.split('[dependencies]')[1]?.split('[')[0] || ''
+
+      const dependencies = rsDepSelection
+        .split('\n')
+        .filter(line => line.trim() && line.includes('='))
+        .map(line => line.split('=')[0].trim())
+        .filter(Boolean)
+
       return {
-        name: cargoTo.match(/name\s*=\s*"(.+)"/)?.[1],
-        version: cargoTo.match(/version\s*=\s*"(.+)"/)?.[1],
+        name: cargoToml.match(/name\s*=\s*"(.+)"/)?.[1],
+        version: cargoToml.match(/version\s*=\s*"(.+)"/)?.[1],
+        dependencies: dependencies,
       }
+    }
     case 'java':
       if (await doesFileExist(cwd, 'pom.xml')) {
         const pom = await fs.readFile(path.join(cwd, 'pom.xml'), 'utf8')
@@ -153,8 +163,27 @@ async function scanProjectDir(cwd, type, files) {
       break
     case 'go':
       const go = await fs.readFile(path.join(cwd, 'go.mod'), 'utf8')
+      const goContent = go.toString()
+
+      // Get all go dep
+      const allDeps = goContent
+        .split('\n')
+        .filter(
+          line =>
+            line.trim().startsWith('github.com/') ||
+            line.trim().startsWith('golang.org/') ||
+            line.trim().startsWith('google.golang.org/') ||
+            line.trim().startsWith('filippo.io/') ||
+            line.trim().startsWith('go.') ||
+            line.trim().startsWith('gonum.org/') ||
+            line.trim().startsWith('gopkg.in/'),
+        )
+        .map(line => line.split(' ')[0].trim())
+        .filter(Boolean)
+
       return {
-        moduleName: go.match(/module\s+(.+)/)?.[1],
+        moduleName: goContent.match(/module\s+(.+)/)?.[1],
+        dependencies: allDeps,
       }
     case 'ruby':
       const gemfile = await fs.readFile(path.join(cwd, 'Gemfile'), 'utf8')
@@ -281,23 +310,118 @@ async function scanProjectDir(cwd, type, files) {
   return {}
 }
 
+export function fetchDependencyCount(jsonStruct) {
+  if (!jsonStruct.types || jsonStruct.types.length === 0) {
+    return null
+  }
+
+  const dependencyCounts = {}
+  let totalCount = 0
+
+  for (const type of jsonStruct.types) {
+    const details = jsonStruct.details[type]
+    let count = 0
+
+    switch (type) {
+      case 'nodejs':
+      case 'typescript':
+        count = details?.dependencies?.length || 0
+        break
+      case 'python':
+        count = details?.dependencies?.length || 0
+        break
+      case 'rust':
+        count = Object.keys(details?.dependencies || {}).length
+        break
+      case 'java':
+        count = details?.dependencies?.length || 0
+        break
+      case 'go':
+        count = details?.dependencies?.length || 0
+        break
+      case 'ruby':
+        count = details?.gems?.length || 0
+        break
+      case 'php':
+        count = details?.require?.length || 0
+        break
+      case 'dotnet':
+        count = details?.dotnet?.length || 0
+        break
+      case 'scala':
+      case 'kotlin':
+        count = details?.dependencies?.length || 0
+        break
+      case 'swift':
+        count = details?.dependencies?.length || 0
+        break
+      case 'dart':
+        count = details?.dependencies?.length || 0
+        break
+      case 'r':
+        count = details?.dependencies?.length || 0
+        break
+      case 'elixir':
+        count = details?.dependencies?.length || 0
+        break
+      case 'clojure':
+        count = details?.dependencies?.length || 0
+        break
+      case 'haskell':
+        count = details?.dependencies?.length || 0
+        break
+      case 'solidity':
+        count = details?.dependencies?.length || 0
+        break
+      case 'cpp':
+        count = details?.dependencies?.length || 0
+        break
+      case 'embedded':
+        count = details?.dependencies?.length || 0
+        break
+      case 'tensorflow':
+      case 'pytorch':
+        count = details?.dependencies?.length || 0
+        break
+      default:
+        count = 0
+    }
+
+    if (count > 0) {
+      dependencyCounts[type] = count
+      totalCount += count
+    }
+  }
+
+  return {
+    total: totalCount,
+    byType: dependencyCounts,
+    types: jsonStruct.types,
+  }
+}
+
 export async function analyzeCwd(cwd, isCommitRelated = false) {
   const files = await fs.readdir(cwd)
   const gitInfo = await getGitInfo(cwd, isCommitRelated)
 
-  let type = 'unknown'
+  const detectedTypes = []
   for (const [projectType, typeFiles] of Object.entries(projectDirMap)) {
     if (await Promise.any(typeFiles.map(file => doesFileExist(cwd, file)))) {
-      type = projectType
-      break
+      detectedTypes.push(projectType)
     }
   }
 
+  const projectDetails = {}
+  for (const type of detectedTypes) {
+    projectDetails[type] = await scanProjectDir(cwd, type, files)
+  }
+
   const analysis = {
-    type,
+    types: detectedTypes,
+    primaryType: detectedTypes[0] || 'unknown',
     files,
     gitInfo,
-    details: await scanProjectDir(cwd, type, files),
+    details: projectDetails,
   }
 
   return analysis
