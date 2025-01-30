@@ -50,29 +50,43 @@ export async function promptGemini(userPrompt, gemini, cwd) {
 Operating System: ${osType}
 Project Analysis: ${JSON.stringify(cwdStructure, null, 2)}
 
-Git Status:
-${gitStatus}
+Git Status: ${gitStatus}
+
+CORE BEHAVIORS:
+1. ALWAYS analyze cwdStructure FIRST - Use project structure to determine ALL command decisions!
 
 Guidelines:
 1. Produce only the command to be executed.
 2. Ensure compatibility with the specified OS and project structure.
 3. Avoid including any explanations or additional text in your response.
 4. Ensure the commands are structured in a way that they can be directly executed in the terminal.
-5. Return null if the request is invalid or impossible.
-6. Leverage the project analysis for context-aware commands.
+5. Return "Please Cross Check Your Request" if the request is invalid or impossible.
+6. Again, leverage the project analysis/cwdStructure for context-aware commands.
 
 For git commits, create a message following these rules:
-Guidelines:
-- Analyze the changes in the Project Analysis thoroughly
-- Attempt to fulfill the user's request as long as you understand it and it's not nonsensical.
+
+VERY CRITICAL RULES:
+1. Again, ALWAYS analyze cwdStructure first:
+   - Check "primaryType" for main project type
+   - Check "details" for existing dependencies
+   - Use ONLY the standard package manager for detected project type
+   - NEVER use system package managers (brew, apt) or virtual environment paths when project type is detected
+
+2. Command Generation:
+   - Check if package already exists in dependencies, if found: Return null with message "X already listed as dependency in Y"
+   - If not found: Generate installation command using project's standard package manager
+   - For removals: If package exists → generate removal command
+   - For upgrades: Always generate upgrade command
+
+Type: feat, fix, ref, docs, style, test, chore
+
+Commit Guidelines:
 - Be extremely specific about the main code changes
 - Use the format: <type>: <specific description>
 - Aim for 50 characters, but prioritize specificity over brevity
 - Use imperative mood (e.g., "implement" not "implemented")
 - No period at the end
 - Enclose the entire message in double quotes
-
-Types: feat, fix, ref, docs, style, test, chore
 
 Examples:
 git add . && git commit -m "feat: implement JWT-based user authentication in auth.js"
@@ -88,14 +102,6 @@ Constraints:
 - Focus on accuracy, efficiency, and direct executability
 - Do not include any commentary or explanation in the responses.
 - Focus solely on producing the command script based on the user's prompt.
-
-User Request: ${userPrompt}
-
-Respond with a JSON object in the following format:
-{
-  "command": "The generated command or null if invalid",
-  "message": "Optional message explaining why the command is null"
-}
 `
 
     const result = await model.generateContent(prompt)

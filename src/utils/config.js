@@ -19,7 +19,7 @@ export async function getConfig() {
   }
 }
 
-async function writeConfig(config) {
+export async function writeConfig(config) {
   await fs.writeFile(CONFIG_FILE, JSON.stringify(config, null, 2))
 }
 
@@ -30,6 +30,7 @@ export async function configAdam() {
     name: 'configChoice',
     message: 'What would you like to configure?',
     choices: [
+      'Set your name',
       'Configure OpenAI',
       'Configure Google Gemini',
       'Select default AI model',
@@ -37,8 +38,17 @@ export async function configAdam() {
       'Select default way of interacting with Adam',
     ],
   })
-
   switch (configChoice) {
+    case 'Set your name':
+      const { userName } = await enquirer.prompt({
+        type: 'input',
+        name: 'userName',
+        message: 'What should I call you?',
+        initial: config.userName || '',
+      })
+      config.userName = userName
+      console.log(chalk.green('Name saved!'))
+      break
     case 'Configure OpenAI':
       const { openaiApiKey } = await enquirer.prompt({
         type: 'password',
@@ -98,7 +108,7 @@ export async function openConfigFile() {
   }
 
   const openEditor =
-    process.platform === 'win32' ? 'start' : process.platform === 'darwin' ? 'open' : 'xdg-open'
+    process.platform === 'win32' ? 'start' : process.platform === 'darwin' ? 'code' : 'xdg-open'
 
   try {
     await exec(`${openEditor} ${CONFIG_FILE}`)

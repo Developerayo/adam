@@ -5,7 +5,7 @@ import chalk from 'chalk'
 import ora from 'ora'
 import enquirer from 'enquirer'
 import { ascii } from './src/utils/ascii.js'
-import { configAdam, openConfigFile, getConfig } from './src/utils/config.js'
+import { configAdam, openConfigFile, getConfig, writeConfig } from './src/utils/config.js'
 import { initOpenAI, prompt as promptOpenAI } from './src/services/openai.js'
 import { initGemini, promptGemini } from './src/services/gemini.js'
 import { useVoice } from './src/services/voice.js'
@@ -41,8 +41,48 @@ Examples:
   process.exit(0)
 }
 
+async function newUser() {
+  const config = await getConfig()
+  if (!config.userName) {
+    const { userName } = await enquirer.prompt({
+      type: 'input',
+      name: 'userName',
+      message: 'Before we proceed, what should I call you?',
+    })
+    config.userName = userName
+    await writeConfig(config)
+    console.log(chalk.green('Name saved!'))
+    process.exit(0)
+  }
+}
+
+const configs = async args => {
+  if (args[0] === 'config') {
+    await configAdam()
+    return true
+  }
+
+  if (args[0] === 'open-config') {
+    openConfigFile()
+    return true
+  }
+
+  if (args[0] === 'show-config') {
+    const config = await getConfig()
+    console.log(JSON.stringify(config, null, 2))
+    return true
+  }
+
+  return false
+}
+
 const runAdam = async () => {
   const args = process.argv.slice(2)
+  await newUser()
+
+  if (await configs(args)) {
+    return
+  }
 
   if (args[0] === '--help' || args[0] === '-h') {
     showHelp()
@@ -111,22 +151,6 @@ const runAdam = async () => {
     console.log(JSON.stringify(jsonStruct, null, 2))
   }
 
-  if (args[0] === 'config') {
-    await configAdam()
-    return
-  }
-
-  if (args[0] === 'open-config') {
-    openConfigFile()
-    return
-  }
-
-  if (args[0] === 'show-config') {
-    const config = await getConfig()
-    console.log(JSON.stringify(config, null, 2))
-    return
-  }
-
   const openai = initOpenAI()
   if (!openai) {
     console.log(
@@ -153,10 +177,13 @@ const runAdam = async () => {
   }
 
   if (!task) {
+    const greeting = config.userName
+      ? `Hi ${config.userName}, I'm Adam, What would you like me to do?`
+      : "Hi, I'm Adam, What would you like me to do?"
     const response = await enquirer.prompt({
       type: 'input',
       name: 'task',
-      message: "Hi, I'm Adam, What would you like me to do?",
+      message: greeting,
     })
     task = response.task
   }
