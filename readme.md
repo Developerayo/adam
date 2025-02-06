@@ -3,7 +3,7 @@
 [![npm version](https://badge.fury.io/js/adam-ai.svg)](https://badge.fury.io/js/adam-ai)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Adam CLI is a command-line interface (CLI) tool designed to assist developers by generating and executing commands using AI models like OpenAI and Google Gemini. It can analyze the current working directory, understand the project structure, and provide context-aware command suggestions.
+Adam is a CLI tool designed to help developers generate and execute simple and complex shell commands. It's smart enough to understand your project cwd and suggest the right commands based on what you're working on.
 
 ## System Requirements
 
