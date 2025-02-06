@@ -102,29 +102,56 @@ DEBUG=true adam "install express"
 
 ### Examples
 
-- **Create a new React project**:
-
-  ```sh
-  adam create a new react project called project-57 with typescript, tailwind, and chakra ui, then install @chakra-ui/react @emotion/react @emotion/styled framer-motion and configure tailwind.
-  ```
-
-- **Commit all current changes using OpenAI specifically**:
-
-> This generates a commit message using OpenAI from your git status/diff.
+- **Create a new React project:**
 
 ```sh
-adam openai commit all current changes
+adam create new nextjs app called project-57 with typescript, tailwind, and trpc
 ```
 
-- **Install pymongo using Gemini specifcally**:
+```sh
+# Response:
+✔ Command created
+[OpenAI] npx create-next-app@latest project-57 --typescript --tailwind --eslint --src-dir --use-npm && cd project-57 && npm install @trpc/server @trpc/client
+```
 
-  ```sh
-  adam gemini install pymongo
-  ```
+- **Create an Express API:**
+
+```sh
+adam initialize an express api named project-57-server with prisma, postgresql, and basic auth setup
+```
+
+```sh
+# Response:
+✔ Command created
+[OpenAI] mkdir project-57-server && cd project-57-server && npm init -y && npm install express prisma @prisma/client pg bcrypt jsonwebtoken && npx prisma init && touch .env && echo "DATABASE_URL=postgresql://user:password@localhost:5432/mydb" >> .env && touch app.js routes/auth.js controllers/authController.js middlewares/authMiddleware.js && mkdir models && touch models/user.js
+```
+
+- **Simple Git Opp:**
+
+```sh
+# Let's force use the Gemini Model here (Pk must have been setup)
+adam gemini commit changes
+```
+
+```sh
+# Response:
+✔ Command created
+[Gemini] git add . && git commit -m "feat: add external_subscriber_addr to config and update run.sh for cleanup support"
+```
+
+```sh
+adam "stash changes, switch to staging, pull latest, merge develop"
+```
+
+```sh
+# Response:
+✔ Command created
+[OpenAI] git stash && git checkout staging && git pull origin staging && git merge develop
+```
 
 ## Configuration Schema
 
-Adam configurations are stored in `~/.adam-cli.json`:
+Adam's configurations are stored in `~/.adam-cli.json`:
 
 ```json
 {
