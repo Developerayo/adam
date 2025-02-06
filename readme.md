@@ -10,7 +10,7 @@ Adam CLI is a command-line interface (CLI) tool designed to assist developers by
 ```sh
 - Node.js >= 16.x
 - npm >= 8.x
-- OpenAI API key and/or Google Gemini API key
+- OpenAI API key and/or Your Gemini API key
 ```
 
 ## Features
