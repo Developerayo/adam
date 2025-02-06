@@ -171,6 +171,7 @@ Fast-forward
 ```
 
 ```sh
+# Stage Changes, Switch to Staging, Pull Latest & Merge Develop
 adam stash changes, switch to staging, pull latest, merge develop
 ```
 
