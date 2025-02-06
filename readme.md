@@ -140,7 +140,7 @@ adam gemini commit changes
 ```
 
 ```sh
-adam "stash changes, switch to staging, pull latest, merge develop"
+adam stash changes, switch to staging, pull latest, merge develop
 ```
 
 ```sh
