@@ -1,0 +1,162 @@
+import { spawn } from 'child_process'
+import os from 'os'
+import chalk from 'chalk'
+import enquirer from 'enquirer'
+import { checkForFileOrFolder } from '../utils/utils'
+
+interface PromptResponses {
+	confirmName?: string
+	confirmFirstTime?: boolean
+	confirmSecondTime?: boolean
+}
+
+export async function execCommand(command: string): Promise<void> {
+	const currentDir = process.cwd()
+	console.log(chalk.cyan(`\n> About to run this command: ${command}`))
+
+	const commandLower = command.toLowerCase()
+
+	if (commandLower.includes('mkdir') || commandLower.includes('touch')) {
+		const words = command.split(' ')
+		const name = words[words.length - 1]
+		if (await checkForFileOrFolder(name)) {
+			console.log(chalk.red(`A file or folder named "${name}" already exists.`))
+			return
+		}
+	}
+
+	if (commandLower.includes('cd ')) {
+		const words = command.split(' ')
+		const dir = words[words.length - 1]
+		if (!(await checkForFileOrFolder(dir))) {
+			console.log(chalk.red(`The folder "${dir}" does not exist.`))
+			return
+		}
+	}
+
+	if (
+		commandLower.includes('rm') ||
+		commandLower.includes('delete') ||
+		commandLower.includes('remove')
+	) {
+		const words = command.split(' ')
+		const itemName = words[words.length - 1]
+
+		const { confirmName } = await enquirer.prompt<PromptResponses>({
+			type: 'input',
+			name: 'confirmName',
+			message: `Safety first! To confirm, type "${itemName}" in here:`,
+		})
+
+		if (confirmName !== itemName) {
+			console.log(chalk.red('Names do not match. Exited for your safety.'))
+			return
+		}
+
+		const { confirmFirstTime } = await enquirer.prompt<PromptResponses>({
+			type: 'confirm',
+			name: 'confirmFirstTime',
+			message: 'You sure about this? Unexpected bad things will happen if not! ',
+			initial: false,
+		})
+
+		if (!confirmFirstTime) {
+			console.log(chalk.yellow('Operation cancelled.'))
+			return
+		}
+
+		const { confirmSecondTime } = await enquirer.prompt<PromptResponses>({
+			type: 'confirm',
+			name: 'confirmSecondTime',
+			message: 'Last chance to stop. This cannot be undone.',
+			initial: false,
+		})
+
+		if (!confirmSecondTime) {
+			console.log(chalk.yellow('Operation cancelled.'))
+			return
+		}
+	}
+
+	if (commandLower.includes('git') && commandLower.includes('commit')) {
+		const gitCommand = command.split('&&').map(cmd => cmd.trim())
+
+		for (const cmd of gitCommand) {
+			if (cmd.toLowerCase().startsWith('git commit')) {
+				const commitMsgMatch = cmd.match(/-m\s*"(.+)"/)
+				if (commitMsgMatch) {
+					const commitMsg = commitMsgMatch[1]
+
+					await runCommand('git add .', currentDir)
+
+					await new Promise<void>((resolve, reject) => {
+						const childProcess = spawn('git', ['commit', '-m', commitMsg], {
+							cwd: currentDir,
+							stdio: 'inherit',
+						})
+
+						childProcess.on('close', exitCode => {
+							if (exitCode === 0) {
+								console.log(chalk.green('\n✔ Commit executed successfully!'))
+								resolve()
+							} else {
+								reject(new Error(`Commit failed: ${exitCode}`))
+							}
+						})
+
+						childProcess.on('error', errorDetails => {
+							reject(errorDetails)
+						})
+					})
+				}
+			} else {
+				await runCommand(cmd, currentDir)
+			}
+		}
+		return
+	}
+
+	await runCommand(command, currentDir)
+}
+
+async function runCommand(command: string, cwd: string): Promise<void> {
+	return new Promise((resolve, reject) => {
+		let childProcess
+
+		if (os.platform() === 'win32') {
+			childProcess = spawn('cmd.exe', ['/c', command], {
+				cwd,
+				stdio: 'inherit',
+			})
+		} else {
+			const shellCheck = `
+                  if [ -f ~/.zshrc ]; then
+                      source ~/.zshrc
+                  elif [ -f ~/.bash_profile ]; then
+                      source ~/.bash_profile
+                  elif [ -f ~/.bashrc ]; then
+                      source ~/.bashrc
+                  fi
+                  ${command}
+              `
+			const cleanedUp = shellCheck.replace(/'/g, "'\\''")
+			childProcess = spawn('/bin/sh', ['-c', `bash -c 'zsh -c "${cleanedUp}"'`], {
+				cwd,
+				stdio: 'inherit',
+			})
+		}
+
+		childProcess.on('close', exitCode => {
+			if (exitCode === 0) {
+				console.log(chalk.green('\n✔ Command executed successfully!'))
+				resolve()
+			} else {
+				reject(new Error(`Failed: ${exitCode}`))
+			}
+		})
+
+		childProcess.on('error', errorDetails => {
+			reject(errorDetails)
+		})
+	})
+}
