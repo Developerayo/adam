@@ -1,55 +1,60 @@
-import { OpenAI } from 'openai'
+import fetch, { Headers } from 'node-fetch'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 import ora from 'ora'
 import chalk from 'chalk'
 import { z } from 'zod'
-import { zodResponseFormat } from 'openai/helpers/zod'
-import { analyzeCwd } from '../helpers/cwdStructure.js'
-import { getOsType } from '../utils/utils.js'
+import { analyzeCwd } from '../helpers/cwdStructure'
+import { getOsType } from '../utils/utils'
+import type { CommandResponse } from '../types'
+
+// @ts-ignore - Global polyfills for Gemini SDK
+globalThis.fetch = fetch
+// @ts-ignore
+globalThis.Headers = Headers
 
 const CommandStepSchema = z.object({
-  command: z.string().nullable(),
-  message: z.string().optional(),
+	command: z.string().nullable(),
+	message: z.string().optional(),
 })
 
-export function initOpenAI(apiKey) {
-  return new OpenAI({ apiKey })
+export function initGemini(apiKey?: string): GoogleGenerativeAI | null {
+	if (!apiKey) {
+		console.log(chalk.red('Gemini API key is missing. Please configure it using "adam config".'))
+		return null
+	}
+	return new GoogleGenerativeAI(apiKey)
 }
 
-export async function prompt(userPrompt, openai, cwd) {
-  const loader = ora('Creating command...').start()
-  const osType = getOsType()
-  const isCommitRelated = userPrompt.toLowerCase().includes('commit')
-  const cwdStructure = await analyzeCwd(cwd, isCommitRelated)
+export async function promptGemini(
+	userPrompt: string,
+	gemini: GoogleGenerativeAI,
+	cwd: string,
+): Promise<CommandResponse> {
+	const loader = ora('Creating command...').start()
+	const osType = getOsType()
+	const cwdStructure = await analyzeCwd(cwd)
 
-  const gitInfo = cwdStructure.gitInfo
-  let gitStatus = 'Not a git repo or git is not installed'
-  if (gitInfo && gitInfo.isGitRepo) {
-    gitStatus = `Git repository ${gitInfo.hasCommits ? 'with' : 'without'} commits.`
-    if (gitInfo.branch) gitStatus += ` Branch: ${gitInfo.branch}.`
-    gitStatus += ` Remote URL: ${gitInfo.remoteUrl}.`
-    if (gitInfo.changes && gitInfo.changes.length > 0) {
-      gitStatus +=
-        `\nChanges (${gitInfo.changes.length}):\n` +
-        gitInfo.changes.map(change => `${change.status} ${change.file}`).join('\n')
+	const gitInfo = cwdStructure.gitInfo
+	let gitStatus = 'Not a git repo or git is not installed'
+	if (gitInfo && gitInfo.isGitRepo) {
+		gitStatus = `Git repository ${gitInfo.hasCommits ? 'with' : 'without'} commits.`
+		if (gitInfo.branch) gitStatus += ` Branch: ${gitInfo.branch}.`
+		gitStatus += ` Remote URL: ${gitInfo.remoteUrl}.`
+		if (gitInfo.changes && gitInfo.changes.length > 0) {
+			gitStatus +=
+				`\nChanges (${gitInfo.changes.length}):\n` +
+				gitInfo.changes.map(change => `${change.status} ${change.file}`).join('\n')
+		} else {
+			gitStatus += '\nNo changes'
+		}
+	}
 
-      if (isCommitRelated && gitInfo.fullDiff) {
-        gitStatus += `\n\nFull diff:\n${gitInfo.fullDiff}`
-      }
-    } else {
-      gitStatus += '\nNo changes'
-    }
-  }
+	try {
+		const model = gemini.getGenerativeModel({ model: 'gemini-pro' })
 
-  try {
-    const completion = await openai.beta.chat.completions.parse({
-      model: 'gpt-4o-2024-08-06',
-      messages: [
-        {
-          role: 'system',
-          content: `You are an expert CLI Assistant. Generate the exact executable command based on the user request.
+		const prompt = `You are an expert CLI Assistant. Generate the exact executable command based on the user request.
 
 Operating System: ${osType}
-
 Project Analysis: ${JSON.stringify(cwdStructure, null, 2)}
 
 Git Status: ${gitStatus}
@@ -113,25 +118,47 @@ Constraints:
 - Focus on accuracy, efficiency, and direct executability
 - Do not include any commentary or explanation in the responses.
 - Focus solely on producing the command script based on the user's prompt.
-`,
-        },
-        { role: 'user', content: userPrompt },
-      ],
-      response_format: zodResponseFormat(CommandStepSchema, 'command_response'),
-    })
 
-    loader.succeed('Command created')
+User Request: ${userPrompt}
 
-    const result = completion.choices[0].message.parsed
+Return your response as a JSON object with this structure:
+{
+  "command": "the command to execute or null if invalid",
+  "message": "optional message if command is null"
+}
+`
 
-    if (result.command && result.command.trim() === '') {
-      result.command = null
-    }
+		const result = await model.generateContent(prompt)
+		const generatedText = result.response.text()
 
-    return { ...result, model: 'OpenAI' }
-  } catch (error) {
-    loader.fail('Failed to create command')
-    console.error(chalk.red('error:'), error instanceof Error ? error.message : String(error))
-    return { command: null, message: 'Failed to create command: ' + error.message }
-  }
+		let response: any
+		try {
+			response = JSON.parse(generatedText)
+		} catch (error) {
+			console.error(chalk.red('Error parsing Gemini response:'), error)
+			return { command: null, message: 'Failed to parse Gemini response', model: 'Gemini' }
+		}
+
+		loader.succeed('Command created')
+
+		if (response.command && response.command.trim() === '') {
+			response.command = null
+		}
+
+		// Msg always has to be a string
+		if (response.message === null || response.message === undefined) {
+			response.message = ''
+		}
+
+		return { ...CommandStepSchema.parse(response), model: 'Gemini' }
+	} catch (error) {
+		loader.fail('Failed to create command')
+		console.error(chalk.red('error:'), error instanceof Error ? error.message : String(error))
+		return {
+			command: null,
+			message:
+				'Failed to create command: ' + (error instanceof Error ? error.message : String(error)),
+			model: 'Gemini',
+		}
+	}
 }
