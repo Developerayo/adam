@@ -3,7 +3,7 @@
 [![npm version](https://badge.fury.io/js/adam-ai.svg)](https://badge.fury.io/js/adam-ai)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Adam is a CLI tool designed to help developers generate and execute simple and complex shell commands. It's smart enough to understand your project cwd and suggest the right commands based on what you're working on.
+Adam is a CLI tool designed to help developers generate/execute simple and complex shell commands. Smart enough to understand your project's structure and suggest the right commands based on what you're working on.
 
 ## System Requirements
 
@@ -187,15 +187,13 @@ Adam's configurations are stored in `~/.adam-cli.json`:
 
 ```json
 {
-  {
   "openaiApiKey": "sk-GbKnOWMMEA",
   "assemblyaiApiKey": "8835d6",
   "defaultPromptMethod": "text",
   "enableVoiceDetection": true,
   "geminiApiKey": "AIzywY",
   "defaultModel": "openai",
-  "userName": "Ayo",
-  }
+  "userName": "Ayo"
 }
 ```
 
