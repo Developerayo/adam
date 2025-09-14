@@ -2,7 +2,7 @@ import fs from 'fs/promises'
 import path from 'path'
 import { exec } from 'child_process'
 import { promisify } from 'util'
-import type { CwdStructure, GitInfo, ProjectDetails, DependencyCount, ProjectType } from '../types'
+import type { CwdStructure, GitInfo, ProjectDetails, DependencyCount, ProjectType } from '../types/index.js'
 
 const execAsync = promisify(exec)
 

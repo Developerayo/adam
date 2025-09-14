@@ -2,7 +2,7 @@ import { spawn } from 'child_process'
 import os from 'os'
 import chalk from 'chalk'
 import enquirer from 'enquirer'
-import { checkForFileOrFolder } from '../utils/utils'
+import { checkForFileOrFolder } from '../utils/utils.js'
 
 interface PromptResponses {
 	confirmName?: string

@@ -3,9 +3,9 @@ import ora from 'ora'
 import chalk from 'chalk'
 import { z } from 'zod'
 import { zodResponseFormat } from 'openai/helpers/zod'
-import { analyzeCwd } from '../helpers/cwdStructure'
-import { getOsType } from '../utils/utils'
-import type { CommandResponse } from '../types'
+import { analyzeCwd } from '../helpers/cwdStructure.js'
+import { getOsType } from '../utils/utils.js'
+import type { CommandResponse } from '../types/index.js'
 
 const CommandStepSchema = z.object({
 	command: z.string().nullable(),

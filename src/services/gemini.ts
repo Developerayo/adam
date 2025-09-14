@@ -3,9 +3,9 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import ora from 'ora'
 import chalk from 'chalk'
 import { z } from 'zod'
-import { analyzeCwd } from '../helpers/cwdStructure'
-import { getOsType } from '../utils/utils'
-import type { CommandResponse } from '../types'
+import { analyzeCwd } from '../helpers/cwdStructure.js'
+import { getOsType } from '../utils/utils.js'
+import type { CommandResponse } from '../types/index.js'
 
 // @ts-ignore - Global polyfills for Gemini SDK
 globalThis.fetch = fetch

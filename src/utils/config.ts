@@ -5,7 +5,7 @@ import enquirer from 'enquirer'
 import chalk from 'chalk'
 import { exec as execCallback } from 'child_process'
 import { promisify } from 'util'
-import type { Config } from '../types'
+import type { Config } from '../types/index.js'
 
 const exec = promisify(execCallback)
 const CONFIG_FILE = path.join(os.homedir(), '.adam-cli.json')
