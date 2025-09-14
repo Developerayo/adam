@@ -1,6 +1,6 @@
 {
 	"name": "adam-ai",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"type": "module",
 	"description": "Adam is a CLI tool designed to help developers generate/execute simple and complex shell commands. Smart enough to understand your project's structure and suggest the right commands based on what you're working on.",
 	"main": "dist/index.js",
