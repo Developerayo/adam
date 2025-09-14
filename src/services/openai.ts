@@ -59,6 +59,7 @@ export async function prompt(
 Operating System: ${osType}
 
 Project Analysis: ${JSON.stringify(cwdStructure, null, 2)}
+${cwdStructure.packageManager ? `Package Manager: ${cwdStructure.packageManager}` : ''}
 
 Git Status: ${gitStatus}
 

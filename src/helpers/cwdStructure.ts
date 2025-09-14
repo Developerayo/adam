@@ -43,6 +43,13 @@ async function doesFileExist(cwd: string, file: string): Promise<boolean> {
 		.catch(() => false)
 }
 
+async function getPackageManager(cwd: string): Promise<'npm' | 'yarn' | 'pnpm'> {
+	if (await doesFileExist(cwd, 'yarn.lock')) return 'yarn'
+	if (await doesFileExist(cwd, 'pnpm-lock.yaml')) return 'pnpm'
+	if (await doesFileExist(cwd, 'package-lock.json')) return 'npm'
+	return 'npm'
+}
+
 export async function getGitInfo(cwd: string, isFullInfoNeeded: boolean = false): Promise<GitInfo> {
 	try {
 		// Check for git [true/false]
@@ -450,12 +457,16 @@ export async function analyzeCwd(
 		projectDetails[type] = await scanProjectDir(cwd, type, files)
 	}
 
+	const isNodeRepo = detectedTypes.includes('nodejs') || detectedTypes.includes('typescript')
+	const packageManager = isNodeRepo ? await getPackageManager(cwd) : undefined
+
 	const analysis: CwdStructure = {
 		types: detectedTypes,
 		primaryType: detectedTypes[0] || 'unknown',
 		files,
 		gitInfo,
 		details: projectDetails,
+		packageManager,
 	}
 
 	return analysis

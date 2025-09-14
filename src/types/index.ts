@@ -43,6 +43,7 @@ export interface CwdStructure {
 	files: string[]
 	gitInfo: GitInfo
 	details: Record<string, ProjectDetails>
+	packageManager?: 'npm' | 'yarn' | 'pnpm'
 }
 
 export interface DependencyCount {

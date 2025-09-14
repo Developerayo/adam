@@ -61,6 +61,7 @@ export async function promptGemini(
 
 Operating System: ${osType}
 Project Analysis: ${JSON.stringify(cwdStructure, null, 2)}
+${cwdStructure.packageManager ? `Package Manager: ${cwdStructure.packageManager}` : ''}
 
 Git Status: ${gitStatus}
 
