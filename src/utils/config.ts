@@ -25,7 +25,10 @@ export async function getConfig(): Promise<Config> {
 		const data = await fs.readFile(CONFIG_FILE, 'utf8')
 		return JSON.parse(data)
 	} catch (error) {
-		console.error(`Error reading config: ${(error as Error).message}`)
+		if ((error as Error).message.includes('JSON')) {
+			console.log(chalk.red('Config file corrupted. Adam is starting from scratch...'))
+			await fs.unlink(CONFIG_FILE).catch(() => {})
+		}
 		return {}
 	}
 }

@@ -32,7 +32,8 @@ export async function promptGemini(
 ): Promise<CommandResponse> {
 	const loader = ora('Creating command...').start()
 	const osType = getOsType()
-	const cwdStructure = await analyzeCwd(cwd)
+	const isCommitRelated = userPrompt.toLowerCase().includes('commit')
+	const cwdStructure = await analyzeCwd(cwd, isCommitRelated)
 
 	const gitInfo = cwdStructure.gitInfo
 	let gitStatus = 'Not a git repo or git is not installed'
@@ -44,13 +45,17 @@ export async function promptGemini(
 			gitStatus +=
 				`\nChanges (${gitInfo.changes.length}):\n` +
 				gitInfo.changes.map(change => `${change.status} ${change.file}`).join('\n')
+
+			if (isCommitRelated && gitInfo.fullDiff) {
+				gitStatus += `\n\nFull diff:\n${gitInfo.fullDiff}`
+			}
 		} else {
 			gitStatus += '\nNo changes'
 		}
 	}
 
 	try {
-		const model = gemini.getGenerativeModel({ model: 'gemini-pro' })
+		const model = gemini.getGenerativeModel({ model: 'gemini-1.5-flash' })
 
 		const prompt = `You are an expert CLI Assistant. Generate the exact executable command based on the user request.
 
@@ -68,7 +73,8 @@ Guidelines:
 3. Avoid including any explanations or additional text in your response.
 4. Ensure the commands are structured in a way that they can be directly executed in the terminal.
 5. Return "Please Cross Check Your Request" if the request is invalid or impossible.
-6. Again, leverage the project analysis/cwdStructure for context-aware commands.
+6. Return "Please Make Sure Your Request is Shell Comand related" if the request is not shell compatible.
+7. Again, leverage the project analysis/cwdStructure for context-aware commands.
 
 For git commits, create a message following these rules:
 
@@ -133,9 +139,18 @@ Return your response as a JSON object with this structure:
 
 		let response: any
 		try {
-			response = JSON.parse(generatedText)
+			let cleanedText = generatedText.trim()
+
+			if (cleanedText.startsWith('```json')) {
+				cleanedText = cleanedText.replace(/^```json\s*/, '').replace(/\s*```$/, '')
+			} else if (cleanedText.startsWith('```')) {
+				cleanedText = cleanedText.replace(/^```\s*/, '').replace(/\s*```$/, '')
+			}
+
+			response = JSON.parse(cleanedText)
 		} catch (error) {
 			console.error(chalk.red('Error parsing Gemini response:'), error)
+			console.error(chalk.yellow('Raw resp:'), generatedText)
 			return { command: null, message: 'Failed to parse Gemini response', model: 'Gemini' }
 		}
 

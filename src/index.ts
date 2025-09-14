@@ -169,7 +169,16 @@ const runAdam = async (): Promise<void> => {
 
 	const config = await getConfig()
 	let task = args.join(' ')
+
 	let modelInUse: 'openai' | 'gemini' = config.defaultModel || 'openai'
+
+	if (!config.defaultModel) {
+		if (config.geminiApiKey && !config.openaiApiKey) {
+			modelInUse = 'gemini'
+		} else if (config.openaiApiKey && !config.geminiApiKey) {
+			modelInUse = 'openai'
+		}
+	}
 
 	if (args[0] === 'openai' || args[0] === 'gemini') {
 		modelInUse = args.shift() as 'openai' | 'gemini'
@@ -268,6 +277,6 @@ runAdam().catch((unexpectedError: unknown) => {
 })
 
 process.on('SIGINT', () => {
-	console.log(chalk.red('\nDie by fire'))
+	console.log(chalk.red('\nSession Ended'))
 	process.exit(0)
 })

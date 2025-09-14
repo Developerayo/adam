@@ -9,10 +9,7 @@ import { createWriteStream, existsSync, unlink } from 'fs'
 import { exec, spawn } from 'child_process'
 import { join, resolve, dirname } from 'path'
 import { promisify } from 'util'
-import { fileURLToPath } from 'url'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
+const __dirname = resolve()
 
 function wait(duration: number = 10): Promise<void> {
 	return new Promise(function (resolve) {
