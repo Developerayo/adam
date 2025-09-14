@@ -21,6 +21,8 @@ interface UserPrompts {
 	userName?: string
 	task?: string
 	userConfirmation?: boolean
+	openaiApiKey?: string
+	geminiApiKey?: string
 }
 
 const showHelp = (): void => {
@@ -60,6 +62,51 @@ async function newUser(): Promise<void> {
 		config.userName = userName
 		await writeConfig(config)
 		console.log(chalk.green('Name saved!'))
+
+		const { setupApiKeys } = await enquirer.prompt<{ setupApiKeys: boolean }>({
+			type: 'confirm',
+			name: 'setupApiKeys',
+			message:
+				'Set up API keys now? (Optional - you can do this later with "adam config")',
+			initial: true,
+		})
+
+		if (setupApiKeys) {
+			const { apiKeyChoice } = await enquirer.prompt<{ apiKeyChoice: string }>({
+				type: 'select',
+				name: 'apiKeyChoice',
+				message: 'Which API key would you like to set up?',
+				choices: ['OpenAI', 'Google Gemini', 'Both', 'Skip for now'],
+			})
+
+			if (apiKeyChoice === 'OpenAI' || apiKeyChoice === 'Both') {
+				const { openaiApiKey } = await enquirer.prompt<UserPrompts>({
+					type: 'password',
+					name: 'openaiApiKey',
+					message: 'Please enter your OpenAI API KEY:',
+				})
+				config.openaiApiKey = openaiApiKey
+				console.log(chalk.green('OpenAI API Key saved!'))
+			}
+
+			if (apiKeyChoice === 'Google Gemini' || apiKeyChoice === 'Both') {
+				const { geminiApiKey } = await enquirer.prompt<UserPrompts>({
+					type: 'password',
+					name: 'geminiApiKey',
+					message: 'Please enter your Google Gemini API KEY:',
+				})
+				config.geminiApiKey = geminiApiKey
+				console.log(chalk.green('Google Gemini API Key saved!'))
+			}
+
+			if (apiKeyChoice !== 'Skip for now') {
+				await writeConfig(config)
+				console.log(
+					chalk.green('Configuration saved! You can run "adam config" anytime to modify settings.'),
+				)
+			}
+		}
+
 		process.exit(0)
 	}
 }
