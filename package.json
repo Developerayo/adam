@@ -1,5 +1,5 @@
 {
-	"name": "adam",
+	"name": "adam-ai",
 	"version": "0.1.0",
 	"description": "Adam is a CLI tool designed to help developers generate/execute simple and complex shell commands. Smart enough to understand your project's structure and suggest the right commands based on what you're working on.",
 	"main": "dist/index.js",
@@ -16,7 +16,15 @@
 		"start": "node dist/index.js",
 		"prepublishOnly": "npm run build"
 	},
-	"keywords": [],
+	"keywords": [
+		"cli-tool",
+		"shell",
+		"commands",
+		"ai",
+		"developer-tools",
+		"adam-ai",
+		"adam-cli"
+	],
 	"contributors": [
 		{
 			"name": "Shodipo Ayomide",
@@ -28,6 +36,14 @@
 		}
 	],
 	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Developerayo/adam.git"
+	},
+	"homepage": "https://github.com/Developerayo/adam#readme",
+	"bugs": {
+		"url": "https://github.com/Developerayo/adam/issues"
+	},
 	"dependencies": {
 		"@google-cloud/speech": "^6.7.0",
 		"@google/generative-ai": "^0.21.0",
