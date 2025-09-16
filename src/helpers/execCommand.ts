@@ -17,20 +17,36 @@ export async function execCommand(command: string): Promise<void> {
 	const commandLower = command.toLowerCase()
 
 	if (commandLower.includes('mkdir') || commandLower.includes('touch')) {
-		const words = command.split(' ')
-		const name = words[words.length - 1]
-		if (await checkForFileOrFolder(name)) {
-			console.log(chalk.red(`A file or folder named "${name}" already exists.`))
-			return
+		const commands = command.split('&&').map(cmd => cmd.trim())
+		for (const singleCmd of commands) {
+			if (
+				singleCmd.toLowerCase().startsWith('mkdir') ||
+				singleCmd.toLowerCase().startsWith('touch')
+			) {
+				const words = singleCmd.split(' ')
+				const name = words[words.length - 1]
+				if (await checkForFileOrFolder(name)) {
+					console.log(chalk.red(`A file or folder named "${name}" already exists.`))
+					return
+				}
+			}
 		}
 	}
 
 	if (commandLower.includes('cd ')) {
-		const words = command.split(' ')
-		const dir = words[words.length - 1]
-		if (!(await checkForFileOrFolder(dir))) {
-			console.log(chalk.red(`The folder "${dir}" does not exist.`))
-			return
+		const commands = command.split('&&').map(cmd => cmd.trim())
+		for (const singleCmd of commands) {
+			if (singleCmd.toLowerCase().startsWith('cd ')) {
+				const dir = singleCmd.slice(3).trim().split(' ')[0]
+				const isBeingCreated = commands.some(
+					cmd =>
+						cmd.toLowerCase().startsWith('mkdir') && cmd.toLowerCase().includes(dir.toLowerCase()),
+				)
+				if (!isBeingCreated && !(await checkForFileOrFolder(dir))) {
+					console.log(chalk.red(`The folder "${dir}" does not exist.`))
+					return
+				}
+			}
 		}
 	}
 
